@@ -1,21 +1,35 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
-export const signUpRequest = createAsyncThunk('signUp/SignUpRequest', async (user: any, { rejectWithValue }) => {
+
+interface SignUpUser {
+  name: string;
+  surname: string;
+  email: string;
+  role: string;
+}
+
+export const signUpRequest = createAsyncThunk('signUp/SignUpRequest', async (user: SignUpUser, { rejectWithValue }) => {
   try {
-    const { data } = await axios.post<string>('/api/authorization/signUp', {
+    const { data } = await axios.post<SignUpUser>('/api/authorization/signUp', {
       user,
     });
     return data;
   } catch (err) {
-    if (!err.response) {
+    if (err instanceof Error) {
       throw err;
     }
     return rejectWithValue(err.response.data);
   }
 });
 
-const initialState = {
-  user: '',
+interface InitialState {
+  user: SignUpUser | null;
+  status: string;
+  errorText: string;
+}
+
+const initialState: InitialState = {
+  user: null,
   status: '',
   errorText: '',
 };
@@ -29,8 +43,7 @@ export const signUpRequestSlice = createSlice({
       state.status = 'loading';
     });
 
-    builder.addCase(signUpRequest.fulfilled, (state, action: PayloadAction<string>) => {
-      console.log(action.payload, 'actionpayload');
+    builder.addCase(signUpRequest.fulfilled, (state, action: PayloadAction<SignUpUser>) => {
       state.user = action.payload;
       state.status = 'success';
     });

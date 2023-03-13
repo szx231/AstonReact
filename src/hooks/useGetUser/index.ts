@@ -1,8 +1,8 @@
-import { useState, useContext } from 'react';
-import { AuthContext } from '../../components/hoc';
+import { useContext } from 'react';
+import { AuthContext } from '../../components/Context/Auth';
 
 export const useGetUser = () => {
-  const { username, surname, role_name } = useContext(AuthContext);
+  const { username, surname, email, role_name } = useContext(AuthContext);
 
-  return { username, surname, role_name };
+  return { username, surname, email, role_name };
 };

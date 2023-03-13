@@ -1,47 +1,45 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useSearchParams } from 'react-router-dom';
 
 import { Wrapp, Table, Tbody } from './styled';
+import { EmailCardType, Event } from './types';
 
 import { MessageCard } from '../../components/MessageCard';
 import { Pagination } from '../../components/Pagination';
 
+import { selectInputValue, selectCategory } from '../../store/Selectors';
+
 import { useAppSelector } from '../../store/hooks';
 import { Search } from '../../components/UI/Search';
-import { Mails } from '../../store/FetchEmails/types';
 import { useLazyGetFavoriteListQuery, useLazyGetAllEmailsQuery } from '../../store/EmailsApi';
 
 const Mail = () => {
-  const { category } = useAppSelector((state) => state.currentCategorySlice);
-  const { inputValue } = useAppSelector((state) => state.searchSlice);
+  const { category } = useAppSelector(selectCategory);
+  const { inputValue } = useAppSelector(selectInputValue);
 
-  const [fetchEmails, { data = [], isLoading, isError, isSuccess, isFetching }] = useLazyGetAllEmailsQuery();
-
+  const [fetchEmails, { data = [], isError, isSuccess, isLoading }] = useLazyGetAllEmailsQuery();
   const [fetchFavoriteList, { data: favoriteMessageList = [], isSuccess: isSuccessFavorite }] =
     useLazyGetFavoriteListQuery();
 
-  useEffect(() => {
-    fetchFavoriteList();
-    fetchEmails({ category, inputValue });
-  }, []);
-
   const [currentPage, setCurrentPage] = useState(1);
-  const [_, setSearchParams] = useSearchParams({ category, page: currentPage + 1 });
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const querySearch = inputValue.length ? inputValue : searchParams.get('search') || '';
 
   const itemsPerPage = 5;
   const [itemOffset, setItemOffset] = useState(0);
   const endOffset = itemOffset + itemsPerPage;
 
-  const currentItems = (dataMessages: Mails[]) => {
+  const currentItems = (dataMessages: EmailCardType[]) => {
     return dataMessages.slice(itemOffset, endOffset);
   };
 
-  const pageCount = (dataMessages: Mails[]) => {
+  const pageCount = (dataMessages: EmailCardType[]) => {
     return Math.ceil(dataMessages.length / itemsPerPage);
   };
 
-  const changePageNumber = (event) => {
+  const changePageNumber = (event: { selected: number }) => {
     const buttonNumber = event.selected;
     const newOffset = (event.selected * itemsPerPage) % data.length;
 
@@ -59,41 +57,62 @@ const Mail = () => {
   }, [category]);
 
   useEffect(() => {
-    if (inputValue.length) {
-      setSearchParams({ category, page: currentPage + 1, search: inputValue });
+    if (inputValue.length || querySearch.length) {
+      setSearchParams({
+        category,
+        page: String(currentPage + 1),
+        search: inputValue.length ? inputValue : querySearch,
+      });
     } else {
-      setSearchParams({ category, page: currentPage + 1 });
+      setSearchParams({ category, page: String(currentPage + 1) });
     }
   }, [currentPage, category, inputValue]);
 
-  const reFetchData = (e) => {
-    if (e.key === 'Enter' || e.type === 'click') {
-      fetchEmails({ category, inputValue });
-    }
-  };
-
-  const clearInputRefetchData = () => {
-    const inputValue = '';
-    fetchEmails({ category, inputValue });
-  };
-
   useEffect(() => {
-    console.log(favoriteMessageList, 'list');
+    fetchFavoriteList();
+    fetchEmails({ category, querySearch });
+  }, [category]);
+
+  const reFetchData = useCallback(
+    (e: Event) => {
+      if (inputValue.length > 0) {
+        if (e.key === 'Enter' || e.type === 'click') {
+          fetchEmails({ category, querySearch });
+        }
+      }
+    },
+    [category, inputValue],
+  );
+
+  const clearInputRefetchData = useCallback(() => {
+    const querySearch = '';
+    fetchEmails({ category, querySearch });
+  }, []);
+
+  const favorteEmails = useMemo(() => {
+    return favoriteMessageList.reduce((acc: string[], c: EmailCardType) => {
+      acc.push(c.author.email);
+      return acc;
+    }, []);
   }, [favoriteMessageList]);
+
+  const messageIncludesInFavorite = (currentUserEmail: string) => {
+    return favorteEmails.includes(currentUserEmail);
+  };
 
   return (
     <Wrapp>
       {isError && <div>Ошибка</div>}
-      {isFetching && <div>loading</div>}
+      {isLoading && <div>loading</div>}
       {data && isSuccessFavorite && (
         <>
           <Search reFetchData={reFetchData} clearInputRefetchData={clearInputRefetchData} />
           <Table>
             <Tbody>
-              {currentItems(data).map((el, index: number) => {
+              {currentItems(data).map((el: EmailCardType) => {
                 return (
                   <MessageCard
-                    favoriteMeesage={favoriteMessageList.includes(el.author.email)}
+                    favoriteMeesage={messageIncludesInFavorite(el.author.email)}
                     key={el.author.email}
                     imageProp={el.author.avatar && el.author.avatar}
                     name={`${el.author.name} ${el.author.surname}`}
@@ -101,8 +120,7 @@ const Mail = () => {
                     description={el.text}
                     read={el.read}
                     messageCategory={el.flag && el.flag}
-                    ind={index}
-                    serverMessageDate={el.date}
+                    serverMessageDate={el.date && el.date}
                     attach={el.doc}
                     messageIsImportant={el.important}
                     messageIsBookMark={el.bookmark}

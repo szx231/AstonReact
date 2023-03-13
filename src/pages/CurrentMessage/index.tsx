@@ -3,8 +3,8 @@ import { useState } from 'react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
+import { Button } from 'antd';
 import { ReactComponent as ImportantImage } from '../../assets/important.svg';
-import { ReactComponent as RegestrationImage } from '../../assets/regestration.svg';
 import { ReactComponent as DownloadImageArrow } from '../../assets/downloadImageArrow.svg';
 
 import {
@@ -45,16 +45,23 @@ import { convertBytes } from '../../helpers/ConvertBytes';
 
 import { useAppSelector } from '../../store/hooks';
 import { useGetEmailQuery } from '../../store/EmailsApi';
-
-const month = ['Янв', 'Фев', 'Мар', 'Апр', 'Мая', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+import { useGetFeatureFlagStatus } from '../../hooks/useGetFutureFlag';
+import { selectСurrentMessageUniqueId } from '../../store/Selectors';
+import { UserMessage } from './types';
+import { messageSentToday } from '../../helpers/MessageSentToday';
 
 const CurrentMessage = () => {
+  // eslint-disable-next-line no-restricted-globals
+  const encodedURL = encodeURIComponent(location.href);
+  const telegramURL = `https://telegram.me/share/url?url=${encodedURL}`;
+
   const [zip] = useState(new JSZip());
   const [blobSizes, setBlobSize] = useState('');
+  const { featureFlagStatus } = useGetFeatureFlagStatus();
 
-  const { email } = useAppSelector((state) => state.currentMessageUniqueIdSlice);
+  const { email } = useAppSelector(selectСurrentMessageUniqueId);
 
-  const { data: message = [], isLoading, isError, isSuccess } = useGetEmailQuery(email);
+  const { data: message, isLoading, isError, isSuccess } = useGetEmailQuery(email);
 
   const downloadImage = async () => {
     const images = Object.values(message.doc);
@@ -72,7 +79,7 @@ const CurrentMessage = () => {
 
   const sumImagesSize = async () => {
     let generalSize = 0;
-    const images = message.doc;
+    const images = message?.doc;
 
     await Promise.all(
       Object.values(images).map(async (el) => {
@@ -86,25 +93,7 @@ const CurrentMessage = () => {
 
   sumImagesSize();
 
-  const messageSentToday = (date: string) => {
-    const currentDay = Date.now();
-    const messageDate = Date.parse(date);
-    const millisecondInDay = 24 * 60 * 60 * 1000;
-
-    if (currentDay - messageDate > millisecondInDay) {
-      const messageSentDay = new Date(messageDate).getDate();
-      const messageSentMonth = new Date(messageDate).getMonth();
-      const messageSentYear = new Date(messageDate).getFullYear();
-      return `${messageSentDay} ${month[messageSentMonth]} ${messageSentYear}`;
-    }
-
-    const messageSentHours = new Date(date).getHours();
-    const messageSentMinutes = new Date(date).getMinutes();
-
-    return `Сегодня, ${messageSentHours}: ${messageSentMinutes}`;
-  };
-
-  const adressees = (data) => {
+  const adressees = (data: UserMessage[]) => {
     const startString = 'Кому: Вы, ';
     const countsUsersShow = 3;
     const more = `ещё ${data.length - countsUsersShow} получателей`;
@@ -122,10 +111,10 @@ const CurrentMessage = () => {
     return startString + users;
   };
 
-  const renderPictures = (data) => {
-    return Object.values(data).map((el, index) => {
+  const renderPictures = (data: { img: string }) => {
+    return Object.values(data).map((el) => {
       return (
-        <DownloadImagesButton key={index} type="button" onClick={downloadImage}>
+        <DownloadImagesButton key={el.slice(0, 10)} onClick={downloadImage}>
           <Picture image={el}>
             <DownloadImageContainer>
               <DownloadImageWrapper>
@@ -139,7 +128,7 @@ const CurrentMessage = () => {
     });
   };
 
-  const filesCount = (data) => {
+  const filesCount = (data: { img: string }) => {
     const dataLength = Object.entries(data).length;
 
     if (dataLength === 1) return `${dataLength} файл`;
@@ -159,13 +148,13 @@ const CurrentMessage = () => {
               <TitleText>{message.title}</TitleText>
               <FlagWrapper>
                 <FlagText>{message.flag}</FlagText>
-                <FlagImage>{messageCategoryImage(message.flag)}</FlagImage>
+                {message.flag && <FlagImage>{messageCategoryImage(message.flag)}</FlagImage>}
               </FlagWrapper>
             </Title>
             <Card>
               <Person>
                 <Dot messageIsRead={false} />
-                {message.author.avatar ? (
+                {message?.author?.avatar ? (
                   <Avatar image={message.author.avatar} />
                 ) : (
                   <AvatarSkeleton>
@@ -175,7 +164,7 @@ const CurrentMessage = () => {
                 <AddresseesInfoWrapp>
                   <TextContainer>
                     <Name>{`${message.author.name} ${message.author.surname}`}</Name>
-                    <MessageDate>{messageSentToday(message.date)}</MessageDate>
+                    {message.date && <MessageDate>{messageSentToday(message.date)}</MessageDate>}
                     <Important>{message.important && <ImportantImage />}</Important>
                   </TextContainer>
                   <Addressees>{adressees(message.to)}</Addressees>
@@ -195,6 +184,13 @@ const CurrentMessage = () => {
               <MessageDescription>{message.text}</MessageDescription>
             </Card>
           </>
+        )}
+        {featureFlagStatus && isSuccess && (
+          <a target="_blank" rel="noopener noreferrer" href={telegramURL}>
+            <Button type="primary" size="large">
+              Поделиться ссылкой в Telegram
+            </Button>
+          </a>
         )}
       </Container>
     </Wrapp>

@@ -6,7 +6,7 @@
 }
 
 .formContainer {
-  max-width: 400px;
+  width: 320px;
   display: flex;
   flex-direction: column;
   gap: 10px;

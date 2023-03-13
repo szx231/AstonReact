@@ -1,5 +1,5 @@
 import { createContext, FC, ReactNode, useMemo } from 'react';
-import { useToggleTheme } from '../../hooks/useToggleTheme';
+import { useToggleTheme } from '../../../hooks/useToggleTheme';
 
 type Theme = 'светлая' | 'тёмная';
 

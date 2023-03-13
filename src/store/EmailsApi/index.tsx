@@ -1,20 +1,28 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { getDecodeUrlUserEmail } from '../../helpers/GetDecodeUrlUserEmail';
+import { timeAgo } from '../../helpers/TimeAgoDate';
+import { EmailCardType, ResponseUsers } from './typed';
 
 export const emailsApi = createApi({
   reducerPath: 'emailsApi',
   tagTypes: ['FavoriteList'],
   baseQuery: fetchBaseQuery({ baseUrl: '/api/' }),
   endpoints: (builder) => ({
-    getAllEmails: builder.query<any, { category: string; inputValue: string }>({
-      query: (args) => `emails?category=${args.category}&search=${args.inputValue || ''}`,
+    getAllEmails: builder.query<EmailCardType[], { category: string; querySearch: string }>({
+      query: (args) => `emails?category=${args.category}&search=${args.querySearch || ''}`,
     }),
-    getEmail: builder.query<any>({
-      query: (email: string) => `email?user=${email || getDecodeUrlUserEmail()}`,
+    getEmail: builder.query<EmailCardType, string>({
+      query: (email) => `email?user=${email || getDecodeUrlUserEmail()}`,
     }),
-    getFavoriteList: builder.query<any>({
+    getFavoriteList: builder.query<EmailCardType[], void>({
       query: () => `/getFavorite`,
       providesTags: ['FavoriteList'],
+    }),
+    getUsersInfo: builder.query<ResponseUsers[], void>({
+      query: () => `/getUsersInfo`,
+      transformResponse: (response: ResponseUsers[]) => {
+        return response.map((el: ResponseUsers) => ({ ...el, created_on: timeAgo(el.created_on) }));
+      },
     }),
     addMessageToFavorite: builder.mutation({
       query: (body) => ({
@@ -34,4 +42,5 @@ export const {
   useAddMessageToFavoriteMutation,
   useGetFavoriteListQuery,
   useLazyGetFavoriteListQuery,
+  useLazyGetUsersInfoQuery,
 } = emailsApi;

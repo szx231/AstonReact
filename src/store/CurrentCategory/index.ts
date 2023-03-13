@@ -10,10 +10,7 @@ export const currentCategorySlice = createSlice({
   name: 'heroList',
   initialState,
   reducers: {
-    changeCurrentCategory: (
-      state,
-      action: PayloadAction<'Входящие' | 'Важное' | 'Отправленные' | 'Черновики' | 'Архив' | 'Спам' | 'Корзина'>,
-    ) => {
+    changeCurrentCategory: (state, action: PayloadAction<string>) => {
       if (action.payload) {
         state.category = action.payload;
       }

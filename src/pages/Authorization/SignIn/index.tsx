@@ -1,17 +1,36 @@
 import { useForm, Controller } from 'react-hook-form';
+
 import { Input, Button } from 'antd';
 import { LockOutlined, UserOutlined, GoogleOutlined } from '@ant-design/icons';
+
 import { Link, Navigate } from 'react-router-dom';
-import { useMemo } from 'react';
+import { useEffect } from 'react';
+
 import { placeholderText, validateRules } from './validateRules';
+
 import { InputErrorMessage } from '../../../components/UI/InputErrorMessage';
+
 import s from './signIn.module.css';
-import { useGetUser } from '../../../hooks/useGetUser';
-import { userIsAuth } from '../../../store/Authorization/CheckUserIsAuth';
-import { useAppDispatch } from '../../../store/hooks';
+
+import { signInRequest } from '../../../store/Authorization/SignIn';
+
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
+
+import { useAthorization } from '../../../hooks/useAthorization';
+import { selectSignIn } from '../../../store/Selectors';
+
+interface Data {
+  email: string;
+  password: string;
+}
 
 const SignIn = () => {
   const dispatch = useAppDispatch();
+  const { status } = useAppSelector(selectSignIn);
+
+  const { status: statusAuth } = useAthorization();
+
+  if (statusAuth === 'success') return <Navigate to="/Mail" />;
 
   const {
     formState: { errors },
@@ -22,19 +41,25 @@ const SignIn = () => {
     mode: 'onBlur',
   });
 
-  const onSubmit = (data) => {
-    alert(JSON.stringify(data));
-    dispatch(userIsAuth(data));
-    reset();
+  const onSubmit = (data: Data) => {
+    dispatch(signInRequest(data));
+
+    if (data) {
+      reset();
+    }
   };
 
-  const title = useMemo(() => 'Авторизация', []);
+  useEffect(() => {
+    if (status === 'success') {
+      window.location.reload();
+    }
+  }, [status]);
 
   return (
     <div className={s.formContainer}>
       <form className={s.form}>
-        <h4 className={s.formTitle}>{title}</h4>
-        <GoogleOutlined style={{ fontSize: '26px', color: '#1677FF' }} />
+        <h4 className={s.formTitle}>Авторизация</h4>
+        <GoogleOutlined style={{ fontSize: '26px', color: '#1677FF', margin: '0 auto' }} />
         <Controller
           render={({ field }) => (
             <Input
@@ -63,9 +88,15 @@ const SignIn = () => {
           rules={validateRules.password}
         />
         <InputErrorMessage errors={errors.password} />
-        <Button onClick={handleSubmit(onSubmit)} type="primary">
-          Войти
-        </Button>
+        {status === 'loading' ? (
+          <Button type="primary" loading disabled>
+            Загрузка...
+          </Button>
+        ) : (
+          <Button onClick={handleSubmit(onSubmit)} type="primary">
+            Войти
+          </Button>
+        )}
       </form>
       <Link to="/Authorization/SignUp">
         <Button style={{ width: '100%' }} type="primary">

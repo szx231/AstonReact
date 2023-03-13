@@ -14,7 +14,6 @@ export const currentMessageUniqueIdSlice = createSlice({
   reducers: {
     uniqueIdAdd: (state, action: PayloadAction<string>) => {
       state.email = action.payload;
-      console.log(state.email, 'emailstate');
     },
   },
 });

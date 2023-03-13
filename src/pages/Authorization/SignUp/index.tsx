@@ -6,7 +6,7 @@ import { LockOutlined, UserOutlined, MailOutlined, IdcardOutlined } from '@ant-d
 
 import { useEffect } from 'react';
 
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 
 import s from './signUp.module.css';
 
@@ -15,14 +15,25 @@ import { placeholderText, validateRules, roleOptions } from './validateRules';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { signUpRequest } from '../../../store/Authorization/SignUp';
 
-import { notification } from '../../../helpers/Notification';
-
 import { InputErrorMessage } from '../../../components/UI/InputErrorMessage';
+import { useAthorization } from '../../../hooks/useAthorization';
+import { selectSignUp } from '../../../store/Selectors';
+
+interface FormData {
+  name: string;
+  surname: string;
+  password: string;
+  email: string;
+  role: string;
+}
 
 const SignUp = () => {
   const dispatch = useAppDispatch();
-  const { status, data, errorText } = useAppSelector((state) => state.signUpRequestSlice);
-  const navigate = useNavigate();
+  const { status, data } = useAppSelector(selectSignUp);
+
+  const { status: statusAuth } = useAthorization();
+
+  if (statusAuth === 'success') return <Navigate to="/Mail" />;
 
   const {
     formState: { errors },
@@ -35,19 +46,11 @@ const SignUp = () => {
 
   useEffect(() => {
     if (status === 'success') {
-      notification('success', 'Учетная запись успешна зарегистрирована!');
-      redirectToPage();
-    }
-    if (status === 'error') {
-      notification('error', errorText);
+      window.location.reload();
     }
   }, [status]);
 
-  const redirectToPage = () => {
-    navigate(`/Mail`);
-  };
-
-  const onSubmit = (formData) => {
+  const onSubmit = (formData: FormData) => {
     dispatch(signUpRequest(formData));
 
     if (data) {
